@@ -880,8 +880,7 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 		if (kthread_should_stop())
 			break;
 
-		while (interrupt_line_active(client) &&
-		       !test_bit(I2C_HID_READ_PENDING, &ihid->flags) &&
+		while (!test_bit(I2C_HID_READ_PENDING, &ihid->flags) &&
 		       !kthread_should_stop()) {
 			i2c_hid_get_input(ihid);
 			usleep_range(polling_interval_active_us,
