@@ -65,19 +65,19 @@
 /* polling mode */
 #define I2C_HID_POLLING_DISABLED 0
 #define I2C_HID_POLLING_GPIO_PIN 1
-#define POLLING_INTERVAL_ACTIVE_US 4000
-#define POLLING_INTERVAL_IDLE_MS 10
+#define I2C_HID_POLLING_INTERVAL_ACTIVE_US 4000
+#define I2C_HID_POLLING_INTERVAL_IDLE_MS 10
 
 static u8 polling_mode;
 module_param(polling_mode, byte, 0444);
 MODULE_PARM_DESC(polling_mode, "How to poll - 0 disabled; 1 based on GPIO pin's status");
 
-static unsigned int polling_interval_active_us = POLLING_INTERVAL_ACTIVE_US;
+static unsigned int polling_interval_active_us = I2C_HID_POLLING_INTERVAL_ACTIVE_US;
 module_param(polling_interval_active_us, uint, 0644);
 MODULE_PARM_DESC(polling_interval_active_us,
 		 "Poll every {polling_interval_active_us} us when the touchpad is active. Default to 4000 us");
 
-static unsigned int polling_interval_idle_ms = POLLING_INTERVAL_IDLE_MS;
+static unsigned int polling_interval_idle_ms = I2C_HID_POLLING_INTERVAL_IDLE_MS;
 module_param(polling_interval_idle_ms, uint, 0644);
 MODULE_PARM_DESC(polling_interval_idle_ms,
 		 "Poll every {polling_interval_idle_ms} ms when the touchpad is idle. Default to 10 ms");
@@ -850,7 +850,14 @@ static bool interrupt_line_active(struct i2c_client *client)
 {
 	unsigned long trigger_type = irq_get_trigger_type(client->irq);
 	struct irq_desc *irq_desc = irq_to_desc(client->irq);
+	ssize_t	status = get_gpio_pin_state(irq_desc);
 
+	if (status < 0) {
+		dev_warn(&client->dev,
+			 "Failed to get GPIO Interrupt line status for %s",
+			 client->name);
+		return false;
+	}
 	/*
 	 * According to Windows Precsiontion Touchpad's specs
 	 * https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/windows-precision-touchpad-device-bus-connectivity,
@@ -858,9 +865,9 @@ static bool interrupt_line_active(struct i2c_client *client)
 	 * ActiveHigh.
 	 */
 	if (trigger_type & IRQF_TRIGGER_LOW)
-		return !get_gpio_pin_state(irq_desc);
+		return !status;
 
-	return get_gpio_pin_state(irq_desc);
+	return status;
 }
 
 static int i2c_hid_polling_thread(void *i2c_hid)
@@ -874,7 +881,8 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 			break;
 
 		while (interrupt_line_active(client) &&
-		       !test_bit(I2C_HID_READ_PENDING, &ihid->flags)) {
+		       !test_bit(I2C_HID_READ_PENDING, &ihid->flags) &&
+		       !kthread_should_stop()) {
 			i2c_hid_get_input(ihid);
 			usleep_range(polling_interval_active_us,
 				     polling_interval_active_us + 100);
