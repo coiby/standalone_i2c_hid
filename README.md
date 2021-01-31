@@ -1,4 +1,33 @@
-# Build a standalone i2c-hid module
+For a broken touchpad, it may take several months or longer to be fixed.
+Polling mode could be a fallback solution for enthusiastic Linux users
+when they have a new laptop. It also acts like a debugging feature. If
+polling mode works for a broken touchpad, we can almost be certain
+the root cause is related to the interrupt or power setting.
+
+This patch could fix touchpads of Lenovo AMD gaming laptops including
+Legion-5 15ARH05 (R7000), Legion-5P (R7000P) and IdeaPad Gaming 3
+15ARH05.
+
+When polling mode is enabled, an I2C device can't wake up the suspended
+system since enable/disable_irq_wake is invalid for polling mode.
+
+Three module parameters are added to i2c-hid,
+    - polling_mode: by default set to 0, i.e., polling is disabled
+    - polling_interval_idle_ms: the polling internal when the touchpad
+      is idle, default to 10ms
+    - polling_interval_active_us: the polling internal when the touchpad
+      is active, default to 4000us
+
+User can change the last two runtime polling parameter by writing to
+/sys/module/i2c_hid/parameters/polling_interval_{idle_ms,active_us}.
+
+Note xf86-input-synaptics doesn't work well with this polling mode
+for the Synaptics touchpad. The Synaptics touchpad would often locks
+into scroll mode when using multitouch gestures [1]. One remedy is to
+decrease the polling interval.
+
+
+## Build a standalone i2c-hid module
 
 1. You should have kernel headers installed
 ```bash
