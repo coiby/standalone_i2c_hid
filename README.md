@@ -36,4 +36,8 @@ filename: /lib/modules/5.9.0-1-MANJARO/kernel/drivers/hid/i2c-hid/i2c-hid.ko.xz
 ```sh
 $ cp i2c-hid.ko /lib/modules/5.9.0-1-MANJARO/kernel/drivers/hid/i2c-hid/i2c-hid.ko.xz
 ```
-3. For distributions like Ubuntu and Fedora, the driver could be built into the initramfs. So you have to rebuild the initramfs after replacing the old module with new one. On Fedora, run `sudo dracut --force`; On ubuntu, run `sudo update-initramfs -u`.
+3.  Append i2c_hid.polling_mode=1 to kernel commandline
+    a. edit /etc/default/grub/
+    b. append "i2c_hid.polling_mode=1" to GRUB_CMDLINE_LINUX
+    c. run `sudo update-grub`
+4. For distributions like Ubuntu and Fedora, the driver could be built into the initramfs. So you have to rebuild the initramfs after replacing the old module with new one. On Fedora, run `sudo dracut --force`; On ubuntu, run `sudo update-initramfs -u`. 
